@@ -1,5 +1,3 @@
-# bot.py
-
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -11,6 +9,7 @@ import base64
 from datetime import datetime, timezone, timedelta
 import config
 from server_settings_manager import ServerSettingsManager
+from store_manager import StoreManager
 
 # --- 初期設定 ---
 intents = discord.Intents.default()
@@ -19,9 +18,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 SAVE_DIR = "tmp"
 settings_manager = ServerSettingsManager()
+store_manager = StoreManager()
 
 # --- ユーティリティ関数 ---
-
 def extract_sheet_id(url):
     match = re.search(r'/d/([a-zA-Z0-9-_]+)', url)
     return match.group(1) if match else None
@@ -53,11 +52,13 @@ def send_to_gas_with_base64(timestamp, user_name, store_name, amount, image_path
         print(f"❌ 通信エラー: {e}")
         return False
 
-# --- UIクラス（OpenStoreSelectViewなど） ---
+# --- UIクラス ---
 class OpenStoreSelectView(discord.ui.View):
     @discord.ui.button(label="情報入力をする", style=discord.ButtonStyle.primary)
     async def open_store_select(self, interaction: discord.Interaction, button: discord.ui.Button):
-        stores = ["秋月電子", "Amazon", "その他"]
+        server_id = interaction.guild.id
+        stores = store_manager.get_stores(server_id)
+
         options = [discord.SelectOption(label=store, value=store) for store in stores]
 
         select = discord.ui.Select(placeholder="購入先を選んでください", options=options)
@@ -65,7 +66,7 @@ class OpenStoreSelectView(discord.ui.View):
         async def select_callback(select_interaction: discord.Interaction):
             selected = select.values[0]
             if selected == "その他":
-                await select_interaction.response.send_modal(StoreInputModal())
+                await select_interaction.response.send_modal(StoreInputModal(server_id))
             else:
                 await select_interaction.response.send_modal(AmountInputModal(selected))
 
@@ -77,11 +78,32 @@ class OpenStoreSelectView(discord.ui.View):
         await interaction.response.send_message("購入先を選択してください！", view=view, ephemeral=True)
 
 class StoreInputModal(discord.ui.Modal, title="新しい購入先を入力してください"):
-    store_name = discord.ui.TextInput(label="購入先店舗名", placeholder="例: 自由入力", required=True)
+    def __init__(self, server_id):
+        super().__init__()
+        self.server_id = server_id
+        self.store_name = discord.ui.TextInput(label="購入先店舗名", placeholder="例: 自由入力", required=True)
+        self.add_item(self.store_name)
 
     async def on_submit(self, interaction: discord.Interaction):
         new_store = self.store_name.value.strip()
-        await interaction.response.send_modal(AmountInputModal(new_store))
+        store_manager.add_store(self.server_id, new_store)
+
+        # 登録完了後にボタンを出す
+        view = AmountInputButton(new_store)
+        await interaction.response.send_message(
+            f"✅ 新しい購入先 **{new_store}** を登録しました！\n続けて合計金額を入力してください。",
+            view=view,
+            ephemeral=True
+        )
+
+class AmountInputButton(discord.ui.View):
+    def __init__(self, store_name):
+        super().__init__()
+        self.store_name = store_name
+
+    @discord.ui.button(label="合計金額を入力する", style=discord.ButtonStyle.success)
+    async def open_amount_input(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(AmountInputModal(self.store_name))
 
 class AmountInputModal(discord.ui.Modal):
     def __init__(self, store_name):
@@ -160,15 +182,10 @@ async def on_message(message):
             print(f"❌ このサーバー({guild_id})に設定データがありません")
             return
 
-        print(f"🔎 現在設定されているaccount_channel_id: {config_data.get('account_channel_id')}")
-        print(f"🔎 メッセージ送信チャンネルID: {message.channel.id}")
-
         if message.channel.id != int(config_data.get('account_channel_id', 0)):
-            print("⚠️ チャンネルIDが一致しないので無視します")
             return
 
         if message.attachments:
-            print("📥 添付ファイルを受信しました")
             for attachment in message.attachments:
                 if any(attachment.filename.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg']):
                     if not os.path.exists(SAVE_DIR):
@@ -190,7 +207,7 @@ async def on_message(message):
     except Exception as e:
         print(f"❌ on_messageエラー: {e}")
 
-# --- 設定コマンドクラス ---
+# --- Cog（設定コマンド） ---
 class Settings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -238,5 +255,3 @@ class Settings(commands.Cog):
 # --- Cog登録 ---
 async def setup(bot):
     await bot.add_cog(Settings(bot))
-
-# （bot.runは書かない！）
