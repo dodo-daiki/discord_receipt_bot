@@ -56,18 +56,42 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. トークン・Webhookの設定 / Configure token & webhook
-- `config_sample.py` をコピーして `config.py` を作成し、以下を設定してください：
-```python
-DISCORD_TOKEN = "あなたのBotトークン"
-GAS_WEBHOOK_URL = "Google Apps ScriptのURL"
+### 4. Google Apps Scriptの設定 / Set up Google Apps Script (GAS)
+
+1. Google Drive上でスプレッドシートを作成します。
+2. Google Apps Script (https://script.google.com/) を開き、新しいプロジェクトを作成。
+3. このリポジトリに含まれる `GAS_code.txt` の内容をGASエディタに貼り付けます。
+4. 「デプロイ > 新しいデプロイ」からウェブアプリとして公開。
+   - 実行する関数：`doPost`
+   - アクセス：全員（匿名ユーザーを含む）に設定
+   - デプロイ後に表示されるURLを控えます。
+
+Set up GAS:
+- Create a spreadsheet and open https://script.google.com/
+- Paste `GAS_code.txt` into the script editor
+- Deploy as web app: set to allow anonymous access and get the URL
+
+### 5. トークン・Webhookの設定 / Configure token & webhook
+
+以下の手順で `config.py` を作成し、BotトークンとWebhook URLを記入します：
+
+Create `config.py` from the sample and edit values:
+
+```bash
+cp config_sample.py config.py
 ```
 
-Copy `config_sample.py` to `config.py` and fill in:
-- Your Discord bot token
-- GAS Webhook URL
+その後、エディタで `config.py` を開き、以下のように記入してください：
 
-### 5. 起動 / Run the bot
+Edit `config.py` like this:
+```python
+DISCORD_TOKEN = "あなたのDiscord Botトークン"
+GAS_WEBHOOK_URL = "ステップ4で取得したGASのWebhook URL"
+```
+
+---
+
+### 6. 起動 / Run the bot
 ```bash
 python main.py
 ```
@@ -94,5 +118,5 @@ MIT License
 
 ## 📧 開発者 / Author
 
-- Dodo Daiki
-- GitHub: [dodo-daiki](https://github.com/dodo-daiki)
+- Dodo Taiki (百々 大貴)
+- GitHub: [yourname](https://github.com/yourname)

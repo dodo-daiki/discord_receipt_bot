@@ -1,0 +1,43 @@
+function doPost(e) {
+  try {
+    // 必要なパラメータを受け取る
+    var folderId = e.parameter.folder_id;
+    var sheetId = e.parameter.spreadsheet_id;
+    var timestamp = e.parameter.timestamp;
+    var userName = e.parameter.user_name;
+    var storeName = e.parameter.store_name;
+    var amount = e.parameter.amount;
+    var base64Data = e.parameter.image_base64;
+    var filename = e.parameter.filename;
+
+    // 必須データチェック
+    if (!base64Data || !folderId || !sheetId) {
+      return ContentService.createTextOutput("❌ 必要なデータが不足しています").setMimeType(ContentService.MimeType.TEXT);
+    }
+
+    // シートを開く
+    var sheet = SpreadsheetApp.openById(sheetId).getSheetByName('Sheet1');
+
+    // Base64データをデコードしてBlobを作成
+    var blob = Utilities.base64Decode(base64Data);
+    var contentType = "image/jpeg";  // 固定
+    var fileBlob = Utilities.newBlob(blob, contentType, filename);
+
+    // Google Driveにファイルを保存
+    var folder = DriveApp.getFolderById(folderId);
+    var file = folder.createFile(fileBlob);
+
+    // 保存したファイルのURLを取得
+    var fileUrl = file.getUrl();
+
+    // スプレッドシートにデータを追記（URLを記録）
+    sheet.appendRow([timestamp, userName, storeName, amount, fileUrl]);
+
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+
+  } catch (error) {
+    // エラー発生時はエラーメッセージを返す
+    Logger.log(error);
+    return ContentService.createTextOutput("❌ Error: " + error).setMimeType(ContentService.MimeType.TEXT);
+  }
+}
