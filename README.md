@@ -119,4 +119,4 @@ MIT License
 ## 📧 開発者 / Author
 
 - Dodo Daiki (百々 大貴)
-- GitHub: [yourname](https://github.com/yourname)
+- GitHub: [dodo-daiki](https://github.com/dodo-daiki)
