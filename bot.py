@@ -145,7 +145,6 @@ class AmountInputModal(discord.ui.Modal):
                 f"✅ 購入者: **{nickname}**\n"
                 f"✅ 購入先: **{self.store_name}**\n"
                 f"✅ 合計金額: **{amount_value}円**",
-                ephemeral=True
             )
             os.remove(image_path)
         else:
